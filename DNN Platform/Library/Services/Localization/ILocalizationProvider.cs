@@ -29,7 +29,9 @@ namespace DotNetNuke.Services.Localization
     /// </summary>
     public interface ILocalizationProvider
     {
+        
         string GetString(string key, string resourceFileRoot);
+        string GetString(string key, string resourceFileRoot, bool disableShowMissingKeys);
         string GetString(string key, string resourceFileRoot, string language);
         string GetString(string key, string resourceFileRoot, string language, PortalSettings portalSettings);
         string GetString(string key, string resourceFileRoot, string language, PortalSettings portalSettings, bool disableShowMissingKeys);

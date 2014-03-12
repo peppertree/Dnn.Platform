@@ -218,6 +218,14 @@ namespace DotNetNuke.Services.Localization
         {
             get
             {
+
+                HttpCookie resxCookie = new HttpCookie("ControlBar_EnableResxEditing");
+                resxCookie = HttpContext.Current.Request.Cookies["ControlBar_EnableResxEditing"];
+                if (resxCookie != null)
+                {
+                    _showMissingKeys = bool.Parse(resxCookie.Value);
+                }
+
                 if (_showMissingKeys == null)
                 {
                     if (Config.GetSetting("ShowMissingKeys") == null)
@@ -228,6 +236,7 @@ namespace DotNetNuke.Services.Localization
                     {
                         _showMissingKeys = bool.Parse(Config.GetSetting("ShowMissingKeys".ToLower()));
                     }
+
                 }
 
                 return _showMissingKeys.Value;
@@ -1149,11 +1158,28 @@ namespace DotNetNuke.Services.Localization
         /// 	[cnurse]	10/06/2004	Documented
         /// </history>
         /// -----------------------------------------------------------------------------
-        public static string GetString(string key, string resourceFileRoot, bool disableShowMissingKeys)
+        public static string GetString(string key, bool disableShowMissingKeys, string resourceFileRoot)
         {
             return GetString(key, resourceFileRoot, PortalController.GetCurrentPortalSettings(), null, disableShowMissingKeys);
         }
 
+        /// -----------------------------------------------------------------------------
+        /// <overloads>One of seven overloads</overloads>
+        /// <summary>
+        /// GetString gets the localized string corresponding to the resourcekey
+        /// </summary>
+        /// <param name="key">The resourcekey to find</param>
+        /// <param name="resourceFileRoot">The Resource File Name.</param>
+        /// <param name="disableShowMissingKeys">Flag indicating wheter missing key support should be ignored</param>/// 
+        /// <returns>The localized Text</returns>
+        /// <history>
+        /// 	[cnurse]	10/06/2004	Documented
+        /// </history>
+        /// -----------------------------------------------------------------------------
+        public static string GetString(string key, string resourceFileRoot, bool disableShowMissingKeys)
+        {
+            return LocalizationProvider.Instance.GetString(key, resourceFileRoot, disableShowMissingKeys);
+        }
         /// -----------------------------------------------------------------------------
         /// <overloads>One of six overloads</overloads>
         /// <summary>
@@ -1264,6 +1290,7 @@ namespace DotNetNuke.Services.Localization
         /// <returns>the string that is safe to use in a javascript function</returns>
         public static string GetSafeJSString(string unsafeString)
         {
+            
             return !string.IsNullOrEmpty(unsafeString) && unsafeString.Length > 0 ? Regex.Replace(unsafeString, "(['\"\\\\])", "\\$1") : unsafeString;
         }
 
@@ -1716,7 +1743,7 @@ namespace DotNetNuke.Services.Localization
             if (!string.IsNullOrEmpty(controlKey))
             {
                 string reskey = "ControlTitle_" + moduleControl.ModuleContext.Configuration.ModuleControl.ControlKey.ToLower() + ".Text";
-                string localizedvalue = GetString(reskey, moduleControl.LocalResourceFile);
+                string localizedvalue = GetString(reskey, true, moduleControl.LocalResourceFile);
                 if (string.IsNullOrEmpty(localizedvalue))
                 {
                     controlTitle = moduleControl.ModuleContext.Configuration.ModuleControl.ControlTitle;

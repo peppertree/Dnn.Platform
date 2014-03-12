@@ -284,6 +284,11 @@ namespace DotNetNuke.UI.Skins
             return pane;
         }
 
+        private void InjectLocalizationEditor()
+        {
+
+        }
+
         private void InjectControlPanel()
         {
             //if querystring dnnprintmode=true, controlpanel will not be shown
@@ -594,6 +599,16 @@ namespace DotNetNuke.UI.Skins
                 }
             }
 
+            if (TabPermissionController.CanAdminPage())
+            {
+                ServicesFramework.Instance.RequestAjaxScriptSupport();
+                ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
+
+                JavaScript.RequestRegistration(CommonJs.jQueryUI);
+                JavaScript.RegisterClientReference(Page, ClientAPI.ClientNamespaceReferences.dnn_dom);
+                ClientResourceManager.RegisterScript(Page, "~/resources/shared/scripts/dnn.EditResources.js");
+            }
+            
             if (!TabPermissionController.CanAdminPage() && !success)
             {
                 //only display the warning to non-administrators (administrators will see the errors)

@@ -241,7 +241,24 @@ namespace DotNetNuke.Modules.Admin.Languages
             {
                 _resfile = Globals.QueryStringDecode(Request.QueryString["resourcefile"]);
                 _locale = Request.QueryString["locale"];
+                if (string.IsNullOrEmpty(_locale))
+                {
+                    if (_resfile.ToLowerInvariant().EndsWith("ascx.resx"))
+                    {
+                        _locale = Localization.SystemLocale.ToLower();
+                    }
+                    else
+                    {
+                        _locale = _resfile.Substring(_resfile.Length - 10, 5).ToLower();
+                    }
+                }
+                _resfile = _resfile.ToLower().Replace("." + _locale, string.Empty);
                 _mode = Request.QueryString["mode"];
+
+                if (String.IsNullOrEmpty(_mode))
+                {
+                    _mode = "System";
+                }
                 _highlight = Request.QueryString["highlight"];
                 lblName.Text = Request.QueryString["name"];
                 lblFile.Text = ResourceFile(_locale, _mode).Replace(Globals.ApplicationMapPath, "").Replace("\\", "/");

@@ -52,6 +52,11 @@ namespace DotNetNuke.Services.Localization
 
         #region Implementation of ILocalizationProvider
 
+        public string GetString(string key, string resourceFileRoot, bool disableShowMissingKeys)
+        {
+            return GetString(key, resourceFileRoot, null, PortalController.GetCurrentPortalSettings(), disableShowMissingKeys);
+        }
+
         public string GetString(string key, string resourceFileRoot)
         {
             return GetString(key, resourceFileRoot, null, PortalController.GetCurrentPortalSettings(), false);
@@ -75,18 +80,20 @@ namespace DotNetNuke.Services.Localization
                 key += ".Text";
             }
             string resourceValue = Null.NullString;
-            bool keyFound = TryGetStringInternal(key, language, resourceFileRoot, portalSettings, ref resourceValue);
+            string sourceFile = Null.NullString;
+            bool keyFound = TryGetStringInternal(key, language, resourceFileRoot, portalSettings, ref resourceValue, ref sourceFile);
 
             //If the key can't be found then it doesn't exist in the Localization Resources
             if (Localization.ShowMissingKeys && !disableShowMissingKeys)
             {
+                string format = "<span class='dnnEditResource' data-resxfile='{0}' data-resxkey='{1}'>{2}</span>";
                 if (keyFound)
                 {
-                    resourceValue = "[L]" + resourceValue;
+                    resourceValue = string.Format(format, sourceFile, key, "[L]" + resourceValue);                  
                 }
                 else
                 {
-                    resourceValue = "RESX:" + key;
+                    resourceValue = string.Format(format, sourceFile, key, "RESX:" + resourceValue);
                 }
             }
 
@@ -256,42 +263,42 @@ namespace DotNetNuke.Services.Localization
             return mayExist;
         }
 
-        private static bool TryGetFromResourceFile(string key, string resourceFile, string userLanguage, string fallbackLanguage, string defaultLanguage, int portalID, ref string resourceValue)
+        private static bool TryGetFromResourceFile(string key, string resourceFile, string userLanguage, string fallbackLanguage, string defaultLanguage, int portalID, ref string resourceValue, ref string sourceFile)
         {
             //Try the user's language first
-            bool bFound = TryGetFromResourceFile(key, GetResourceFileName(resourceFile, userLanguage), portalID, ref resourceValue);
+            bool bFound = TryGetFromResourceFile(key, GetResourceFileName(resourceFile, userLanguage), portalID, ref resourceValue, ref sourceFile);
 
             if (!bFound && fallbackLanguage != userLanguage)
             {
                 //Try fallback language next
-                bFound = TryGetFromResourceFile(key, GetResourceFileName(resourceFile, fallbackLanguage), portalID, ref resourceValue);
+                bFound = TryGetFromResourceFile(key, GetResourceFileName(resourceFile, fallbackLanguage), portalID, ref resourceValue, ref sourceFile);
             }
             if (!bFound && !(defaultLanguage == userLanguage || defaultLanguage == fallbackLanguage))
             {
                 //Try default Language last
-                bFound = TryGetFromResourceFile(key, GetResourceFileName(resourceFile, defaultLanguage), portalID, ref resourceValue);
+                bFound = TryGetFromResourceFile(key, GetResourceFileName(resourceFile, defaultLanguage), portalID, ref resourceValue, ref sourceFile);
             }
             return bFound;
         }
 
-        private static bool TryGetFromResourceFile(string key, string resourceFile, int portalID, ref string resourceValue)
+        private static bool TryGetFromResourceFile(string key, string resourceFile, int portalID, ref string resourceValue, ref string sourceFile)
         {
             //Try Portal Resource File
-            bool bFound = TryGetFromResourceFile(key, resourceFile, portalID, CustomizedLocale.Portal, ref resourceValue);
+            bool bFound = TryGetFromResourceFile(key, resourceFile, portalID, CustomizedLocale.Portal, ref resourceValue, ref sourceFile);
             if (!bFound)
             {
                 //Try Host Resource File
-                bFound = TryGetFromResourceFile(key, resourceFile, portalID, CustomizedLocale.Host, ref resourceValue);
+                bFound = TryGetFromResourceFile(key, resourceFile, portalID, CustomizedLocale.Host, ref resourceValue, ref sourceFile);
             }
             if (!bFound)
             {
                 //Try Portal Resource File
-                bFound = TryGetFromResourceFile(key, resourceFile, portalID, CustomizedLocale.None, ref resourceValue);
+                bFound = TryGetFromResourceFile(key, resourceFile, portalID, CustomizedLocale.None, ref resourceValue, ref sourceFile);
             }
             return bFound;
         }
 
-        private static bool TryGetStringInternal(string key, string userLanguage, string resourceFile, PortalSettings portalSettings, ref string resourceValue)
+        private static bool TryGetStringInternal(string key, string userLanguage, string resourceFile, PortalSettings portalSettings, ref string resourceValue, ref string sourceFile)
         {
             string defaultLanguage = Null.NullString;
             string fallbackLanguage = Localization.SystemLocale;
@@ -339,7 +346,7 @@ namespace DotNetNuke.Services.Localization
             }
 
             //Try the resource file for the key
-            bool bFound = TryGetFromResourceFile(key, resourceFile, userLanguage, fallbackLanguage, defaultLanguage, portalId, ref resourceValue);
+            bool bFound = TryGetFromResourceFile(key, resourceFile, userLanguage, fallbackLanguage, defaultLanguage, portalId, ref resourceValue, ref sourceFile);
             if (!bFound)
             {
                 if (Localization.SharedResourceFile.ToLowerInvariant() != resourceFile.ToLowerInvariant())
@@ -349,7 +356,7 @@ namespace DotNetNuke.Services.Localization
 
                     if (localSharedFile.ToLowerInvariant() != resourceFile.ToLowerInvariant())
                     {
-                        bFound = TryGetFromResourceFile(key, localSharedFile, userLanguage, fallbackLanguage, defaultLanguage, portalId, ref resourceValue);
+                        bFound = TryGetFromResourceFile(key, localSharedFile, userLanguage, fallbackLanguage, defaultLanguage, portalId, ref resourceValue, ref sourceFile);
                     }
                 }
             }
@@ -357,13 +364,13 @@ namespace DotNetNuke.Services.Localization
             {
                 if (Localization.SharedResourceFile.ToLowerInvariant() != resourceFile.ToLowerInvariant())
                 {
-                    bFound = TryGetFromResourceFile(key, Localization.SharedResourceFile, userLanguage, fallbackLanguage, defaultLanguage, portalId, ref resourceValue);
+                    bFound = TryGetFromResourceFile(key, Localization.SharedResourceFile, userLanguage, fallbackLanguage, defaultLanguage, portalId, ref resourceValue, ref sourceFile);
                 }
             }
             return bFound;
         }
 
-        private static bool TryGetFromResourceFile(string key, string resourceFile, int portalID, CustomizedLocale resourceType, ref string resourceValue)
+        private static bool TryGetFromResourceFile(string key, string resourceFile, int portalID, CustomizedLocale resourceType, ref string resourceValue, ref string sourceFile)
         {
             bool bFound = Null.NullBoolean;
             string resourceFileName = resourceFile;
@@ -415,6 +422,7 @@ namespace DotNetNuke.Services.Localization
                 Dictionary<string, string> dicResources = GetResourceFile(cacheKey);
                 if (dicResources != null)
                 {
+                    sourceFile = cacheKey.Substring(1);
                     bFound = dicResources.TryGetValue(key, out resourceValue);
                 }
             }

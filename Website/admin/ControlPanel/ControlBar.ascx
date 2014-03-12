@@ -286,6 +286,11 @@
                         <li><a href="<%= BuildToolUrl("PublishPage", false, "", "", "", true) %>" id="ControlBar_PublishPage">
                             <%= GetString("Tool.PublishPage.Text") %></a></li>
                         <% } %>
+                        <% if (TabPermissionController.CanAdminPage())
+                           {%>
+                        <li><a href="javascript:void(0);" id="ControlBar_EnableResxEditing">
+                            Enabled Resource Editing</a></li>
+                        <% } %>
                        
                     </ul>
                     <div class="dnnClear">
@@ -390,6 +395,7 @@
     </div>
 </asp:Panel>
 <script type="text/javascript">
+
     if (typeof dnn === 'undefined') dnn = {};
     dnn.controlBarSettings = {
         currentUserMode: '<%= GetModeForAttribute() %>',
@@ -425,9 +431,68 @@
         });
     });
 
+
+
     function openFileUploader() {
         var instance = dnn['<%= FileUploader.ClientID %>'];
         instance && instance.show();
+    };
+
+    var resxEditingEnabled = false;
+
+    $(function () {
+
+        cookieId = 'ControlBar_EnableResxEditing';
+        cookieValue = cookieId ? dnn.dom.getCookie(cookieId) : '';
+        if (cookieValue == 'true') {
+            resxEditingEnabled = true;
+            $('a#ControlBar_EnableResxEditing').text("Disable Resx Editing");
+            enableResxEditing();
+        }
+
+        $('a#ControlBar_EnableResxEditing').click(function () {
+            if (resxEditingEnabled == false) {
+                resxEditingEnabled = true;
+                enableResxEditing();               
+                dnn.dom.setCookie(cookieId, 'true', 1, '/', '', false, 360000);
+                $(this).text("Disable Resx Editing");
+            }
+            else {               
+                disableResxEditing();
+                resxEditingEnabled = false;
+                dnn.dom.setCookie(cookieId, 'false', 1, '/', '', false, 360000);
+                $(this).text("Enable Resx Editing");
+            }
+        });
+
+    });
+
+    function disableResxEditing() {
+
+        $("span.dnnEditResource").off("click");
+
+    }
+
+    function enableResxEditing() {
+
+
+
+        $("span.dnnEditResource").click(function (event) {
+            var el = $(this);
+            var parent = $(this).parent();
+            var resxFile = el.attr("data-resxfile");
+            var resxKey = el.attr("data-resxkey");
+            showLocalizationEditor(resxFile, resxKey);
+            event.preventDefault();
+            return false;
+        })
+
+    }
+
+    function showLocalizationEditor(resxFile, resxString) {
+        //alert('now editing ' + resxString + ' in file ' + resxFile);
+        var url = 'http://dnnfork/Admin/Languages/ctl/EditResourceKey/mid/445/Highlight/false?Name=' + resxString + '&ResourceFile=' + resxFile + '&popUp=true'
+        dnnModal.show(url, false, 550, 950, true, '')
     };
 
 </script>

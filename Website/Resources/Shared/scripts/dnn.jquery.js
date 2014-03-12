@@ -363,18 +363,18 @@
         if (($(opts.targetArea).find(opts.targetSelector + ':visible').length ===
             $(opts.targetArea).find(opts.targetSelector + opts.targetExpandedSelector + ':visible').length)
             && !$(this).hasClass('expanded')) {
-            $(this).addClass('expanded').text(opts.collapseText);
+            $(this).addClass('expanded').html(opts.collapseText);
         }
 
         $elem.click(function (e) {
             e.preventDefault();
             var $this = $(this);
             if ($this.hasClass('expanded')) {
-                $this.removeClass('expanded').text(opts.expandText);
+                $this.removeClass('expanded').html(opts.expandText);
                 $(opts.targetArea).find(opts.targetSelector + opts.targetExpandedSelector + ':visible').click();
             }
             else {
-                $this.addClass('expanded').text(opts.collapseText);
+                $this.addClass('expanded').html(opts.collapseText);
                 $(opts.targetArea).find(opts.targetSelector + ':visible').not(opts.targetExpandedSelector).click();
             }
 
