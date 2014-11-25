@@ -6,7 +6,7 @@ using DotNetNuke.Collections;
 
 namespace DotNetNuke.Security.Authentication
 {
-    class AuthenticationSettings
+    public class AuthenticationSettings
     {
         #region "Constructors"
         public AuthenticationSettings(int portalId)
@@ -28,8 +28,8 @@ namespace DotNetNuke.Security.Authentication
         #region "Public Methods"
         private void ReadSettings(int portalId)
         {
-            int id = Settings.GetValueOrDefault("AuthenticationSettings_CredentialMode", 1);
-            //SupportedAuthenticationMethods = Settings.GetValueOrDefault("AuthenticationSettings_SupportedAuthenticationMethods", "DNN;");
+            CredentialMode = (CredentialMode)(Settings.GetValueOrDefault("AuthenticationSettings_CredentialMode", 1));
+            //SupportedAuthenticationMethods = (AuthenticationMethod Settings.GetValueOrDefault("AuthenticationSettings_SupportedAuthenticationMethods", "DNN;").ToList();
         }
 
         public void UpdateSettings(int portalId)

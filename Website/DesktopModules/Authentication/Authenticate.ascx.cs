@@ -53,6 +53,7 @@ using DotNetNuke.Services.Messaging.Data;
 using DotNetNuke.UI.Skins.Controls;
 using DotNetNuke.UI.UserControls;
 using DotNetNuke.UI.WebControls;
+using DotNetNuke.Security.Authentication;
 
 #endregion
 
@@ -62,6 +63,9 @@ namespace DotNetNuke.Modules.Authentication
     {
 
         #region "Private Members"
+
+        private AuthenticationStatus status = AuthenticationStatus.InvalidCredentials;
+        private AuthenticationSettings settings = null;
 
         #endregion
 
@@ -85,11 +89,13 @@ namespace DotNetNuke.Modules.Authentication
 		/// Page_Load runs when the control is loaded
 		/// </summary>
 		/// <remarks>
-		/// </remarks>
+		/// </remarks>       
         protected override void OnLoad(EventArgs e)
         {
-
+            
             base.OnLoad(e);
+            settings = new AuthenticationSettings(PortalSettings.Current.PortalId);
+
             cmdLogin.Click += cmdLogin_Click;
             cmdCancel.Click += cmdCancel_Click;
             cmdForgotPassword.Click += cmdForgotPassword_Click;
@@ -108,17 +114,42 @@ namespace DotNetNuke.Modules.Authentication
 
         void cmdLogin_Click(object sender, EventArgs e)
         {
-            throw new NotImplementedException();
+            Login(AuthenticationMethod.DNN);
         }
 
         #endregion
 
         #region "Private Methods"
 
-        private void TryLogin()
+        private void Login(AuthenticationMethod method)
         {
-            
+
+            status = DotNetNuke.Security.Authentication.AuthenticationController.Authenticate(txtIdentifier.Text.Trim(), txtPassword.Text.Trim(), method);
+
+            switch(status)
+            {
+                case AuthenticationStatus.Authenticated:
+                    //todo handle successful login
+                    break;
+                case AuthenticationStatus.NeedsPasswordChange:
+                    //handle password change
+                    break;
+                case AuthenticationStatus.NotApproved:
+                    //handle verfication code situation
+                    break;
+                default:
+                    GiveFeedback(Localization.GetString(string.Format("{0}_" + status.ToString(), "Error"), LocalResourceFile));
+                    break;
+                    
+            }
+           
         }
+   
+        private void GiveFeedback(string message)
+        {
+            //todo add module message
+        }
+
         #endregion
     }
 }

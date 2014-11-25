@@ -10,17 +10,51 @@ using DotNetNuke.Entities.Host;
 
 namespace DotNetNuke.Security.Authentication
 {
-    class AuthenticationController
+    public class AuthenticationController
     {
 
         #region "Public Methods"
 
-        AuthenticationStatus Authenticate(UserInfo user, AuthenticationMethod method)
+        public static AuthenticationStatus Authenticate(string identifier, string password, AuthenticationMethod method)
+        {
+
+            AuthenticationSettings settings = new AuthenticationSettings(PortalSettings.Current.PortalId);
+
+            UserInfo authenticatedUser = new UserInfo();
+            authenticatedUser.PortalID = PortalSettings.Current.PortalId;
+            authenticatedUser.Membership = new UserMembership(authenticatedUser);
+            authenticatedUser.Membership.Password = password;
+
+            switch (settings.CredentialMode)
+            {
+                case CredentialMode.Email:
+                    authenticatedUser.Email = identifier;
+                    break;
+                case CredentialMode.Username:
+                    authenticatedUser.Username = identifier;
+                    break;
+                case CredentialMode.UserId:
+                    int userid = Null.NullInteger;
+                    if (int.TryParse(identifier, out userid))
+                    {
+                        authenticatedUser.UserID = userid;
+                    }
+                    else
+                    {
+                        return AuthenticationStatus.InvalidCredentials;
+                    }
+                    break;
+            }
+
+            return Authenticate(authenticatedUser, method, Null.NullString);
+        }
+
+        public static AuthenticationStatus Authenticate(UserInfo user, AuthenticationMethod method)
         {
             return Authenticate(user, method, Null.NullString);
         }
 
-        AuthenticationStatus Authenticate(UserInfo user, AuthenticationMethod method, string VerificationCode)
+        public static AuthenticationStatus Authenticate(UserInfo user, AuthenticationMethod method, string VerificationCode)
         {
             AuthenticationStatus authenticationStatus = AuthenticationStatus.InvalidCredentials;
 
@@ -154,7 +188,7 @@ namespace DotNetNuke.Security.Authentication
 
         }
 
-        private UserInfo GetUserInternal(UserInfo user)
+        private static UserInfo GetUserInternal(UserInfo user)
         {
             UserInfo validatedUser = null;
             int portalId = user.PortalID;
