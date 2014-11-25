@@ -572,6 +572,11 @@
     <Compile Include="Modules\SQL\Components\SqlQueryController.cs" />
     <Compile Include="Modules\SQL\Components\SqlQuery.cs" />
     <Compile Include="Obsolete\UserController.cs" />
+    <Compile Include="Security\Authentication\AuthenticationController.cs" />
+    <Compile Include="Security\Authentication\AuthenticationMethod.cs" />
+    <Compile Include="Security\Authentication\AuthenticationSettings.cs" />
+    <Compile Include="Security\Authentication\AuthenticationStatus.cs" />
+    <Compile Include="Security\Authentication\CredentialMode.cs" />
     <Compile Include="Security\FIPSCompliant.cs" />
     <Compile Include="Security\Membership\AspNetMembershipProvider.cs" />
     <Compile Include="Security\Permissions\CorePermissionProvider.cs" />
