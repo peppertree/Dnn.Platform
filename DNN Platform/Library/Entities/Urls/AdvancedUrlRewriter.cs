@@ -236,7 +236,7 @@ namespace DotNetNuke.Entities.Urls
                         result.PortalId = requestedAlias.PortalID;
                         result.CultureCode = requestedAlias.CultureCode;
                         //get the portal alias mapping for this portal
-                        result.PortalAliasMapping = PortalSettings.GetPortalAliasMappingMode(requestedAlias.PortalID);
+                        result.PortalAliasMapping = PortalSettingsController.Instance().GetPortalAliasMappingMode(requestedAlias.PortalID);
 
                         //if requested alias wasn't the primary, we have a replacement, redirects are allowed and the portal alias mapping mode is redirect
                         //then do a redirect based on the wrong portal
@@ -299,7 +299,7 @@ namespace DotNetNuke.Entities.Urls
                         //not correct alias for portal : will be redirected
                         //perform a 301 redirect if one has already been found
                         response.AppendHeader("X-Redirect-Reason", result.Reason.ToString().Replace("_", " ") + " Requested");
-                        response.RedirectPermanent(result.FinalUrl);
+                        response.RedirectPermanent(result.FinalUrl, false);
                         finished = true;
                     }
                     if (!finished)
@@ -416,7 +416,7 @@ namespace DotNetNuke.Entities.Urls
                                 finished = true;
                                 //perform a 301 redirect if one has already been found
                                 response.AppendHeader("X-Redirect-Reason", result.Reason.ToString().Replace("_", " ") + " Requested");
-                                response.RedirectPermanent(result.FinalUrl);
+                                response.RedirectPermanent(result.FinalUrl, false);
                             }
                         }
                     }
@@ -532,7 +532,7 @@ namespace DotNetNuke.Entities.Urls
                                                 ShowDebugData(context, fullUrl, result, null);
                                             }
                                             response.AppendHeader("X-Redirect-Reason", result.Reason.ToString().Replace("_", " ") + " Requested");
-                                            response.Redirect(result.FinalUrl, false);
+                                            response.RedirectPermanent(result.FinalUrl);
                                             finished = true;
                                         }
                                         else
@@ -564,7 +564,7 @@ namespace DotNetNuke.Entities.Urls
                                             else
                                             {
                                                 response.AppendHeader("X-Redirect-Reason", result.Reason.ToString().Replace("_", " ") + " Requested");
-                                                response.Redirect(result.FinalUrl, false);
+                                                response.RedirectPermanent(result.FinalUrl);
                                                 finished = true;
                                             }
                                         }
@@ -581,7 +581,7 @@ namespace DotNetNuke.Entities.Urls
                                         if (result.Action == ActionType.Redirect301)
                                         {
                                             response.AppendHeader("X-Redirect-Reason", result.Reason.ToString().Replace("_", " ") + " Requested");
-                                            response.RedirectPermanent(result.FinalUrl);
+                                            response.RedirectPermanent(result.FinalUrl, false);
                                             finished = true;
                                         }
                                         else if (result.Action == ActionType.Redirect302)
@@ -688,6 +688,7 @@ namespace DotNetNuke.Entities.Urls
             {
                 //do nothing, a threadAbortException will have occured from using a server.transfer or response.redirect within the code block.  This is the highest
                 //level try/catch block, so we handle it here.
+                Thread.ResetAbort();
             }
             catch (Exception ex)
             {

@@ -1759,11 +1759,8 @@ namespace DotNetNuke.Services.FileSystem
                 //Add any folders from non-core providers
                 if (folderMapping.MappingName != "Standard" && folderMapping.MappingName != "Secure" && folderMapping.MappingName != "Database")
                 {
-                    if (!isRecursive)
-                    {
-                        mergedItem.ExistsInFolderMapping = true;
-                    }
-                    else
+                    mergedItem.ExistsInFolderMapping = true;
+                    if (isRecursive)
                     {
                         var folder = GetFolder(portalId, mergedItem.FolderPath);
                         mappedFolders = MergeFolderLists(mappedFolders, GetFolderMappingFoldersRecursive(folderMapping, folder));
@@ -2062,7 +2059,7 @@ namespace DotNetNuke.Services.FileSystem
                     {
                         if (!folderProvider.FileExists(folder, file.FileName))
                         {
-                            FileManager.Instance.DeleteFile(file);
+                            FileDeletionController.Instance.DeleteFileData(file);
                         }
                     }
                     catch (Exception ex)

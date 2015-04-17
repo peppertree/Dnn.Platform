@@ -19,7 +19,9 @@
 // DEALINGS IN THE SOFTWARE.
 #endregion
 
+using System;
 using DotNetNuke.Entities.Content.Workflow.Dto;
+using DotNetNuke.Entities.Users;
 
 namespace DotNetNuke.Entities.Content.Workflow
 {
@@ -35,7 +37,8 @@ namespace DotNetNuke.Entities.Content.Workflow
         /// <param name="workflowId">Workflow Id</param>
         /// <param name="contentItemId">Content item Id</param>
         /// <param name="userId">User Id of the user that start the workflow</param>
-        /// <exception cref="DotNetNuke.Entities.Content.Workflow.Exceptions.WorkflowInvalidOperationException">Thrown when start a workflow on a Content Item that already has a started workflow.</exception>
+        /// <exception cref="DotNetNuke.Entities.Content.Workflow.Exceptions.WorkflowInvalidOperationException">Thrown when start a workflow on a Content Item that already has a started workflow.</exception>        
+        /// <exception cref="ArgumentOutOfRangeException">When workflowId param is negative</exception>
         void StartWorkflow(int workflowId, int contentItemId, int userId);
 
         /// <summary>
@@ -108,5 +111,23 @@ namespace DotNetNuke.Entities.Content.Workflow
         /// <param name="stateTransaction">State transaction Dto</param>
         /// <exception cref="DotNetNuke.Entities.Content.Workflow.Exceptions.WorkflowConcurrencyException">Thrown when the current state of the workflow is not the same of the current state specified in the StateTransaction Dto</exception>
         void CompleteWorkflow(StateTransaction stateTransaction);
+
+
+        /// <summary>
+        /// This method returns the user that started the workflow for the contentItem.
+        /// </summary>
+        /// <remarks>If Content Item has no workflow, returns null.</remarks>
+        /// <param name="contentItem">ContentItem</param>
+        /// <returns>User Info</returns>
+        UserInfo GetStartedDraftStateUser(ContentItem contentItem);
+
+        /// <summary>
+        /// This method returns the user that submitted the contentItem.
+        /// </summary>
+        /// <remarks>If Content Item has no workflow or the content has not submitted yet, returns null.</remarks>
+        /// <param name="contentItem">ContentItem</param>
+        /// <returns>User Info</returns>
+        UserInfo GetSubmittedDraftStateUser(ContentItem contentItem);
+
     }
 }

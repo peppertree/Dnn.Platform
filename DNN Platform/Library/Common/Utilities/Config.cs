@@ -86,11 +86,11 @@ namespace DotNetNuke.Common.Utilities
         /// <returns></returns>
         public static XmlDocument AddAppSetting(XmlDocument xmlDoc, string key, string value, bool update)
         {
-            XmlElement xmlElement;
             //retrieve the appSettings node 
             XmlNode xmlAppSettings = xmlDoc.SelectSingleNode("//appSettings");
             if (xmlAppSettings != null)
             {
+                XmlElement xmlElement;
                 //get the node based on key
                 XmlNode xmlNode = xmlAppSettings.SelectSingleNode(("//add[@key='" + key + "']"));
                 if (update && xmlNode != null)
@@ -166,7 +166,7 @@ namespace DotNetNuke.Common.Utilities
 
         public static void BackupConfig()
         {
-            string backupFolder = Globals.glbConfigFolder + "Backup_" + DateTime.Now.Year + DateTime.Now.Month + DateTime.Now.Day + DateTime.Now.Hour + DateTime.Now.Minute + "\\";
+            string backupFolder = string.Concat(Globals.glbConfigFolder, "Backup_", DateTime.Now.ToString("yyyyMMddHHmm"), "\\");
             //save the current config files
             try
             {
@@ -622,7 +622,9 @@ namespace DotNetNuke.Common.Utilities
 
                 // Attempt a few times in case the file was locked; occurs during modules' installation due
                 // to application restarts where IIS can overlap old application shutdown and new one start.
-                for (var retry = 3; retry >= 0; retry--)
+                const int maxRetires = 4;
+                const double miltiplier = 2.5;
+                for (var retry = maxRetires; retry >= 0; retry--)
                 {
                     try
                     {
@@ -645,7 +647,7 @@ namespace DotNetNuke.Common.Utilities
                         }
 
                         // try incremental delay; maybe the file lock is released by then
-                        Thread.Sleep((10 - 3 * retry) * 1000);
+                        Thread.Sleep(((int)(miltiplier * (maxRetires - retry + 1)) * 1000));
                     }
                 }
 
@@ -726,7 +728,7 @@ namespace DotNetNuke.Common.Utilities
 
         public static string UpdateMachineKey()
         {
-            string backupFolder = Globals.glbConfigFolder + "Backup_" + DateTime.Now.Year + DateTime.Now.Month + DateTime.Now.Day + DateTime.Now.Hour + DateTime.Now.Minute + "\\";
+			string backupFolder = string.Concat(Globals.glbConfigFolder, "Backup_", DateTime.Now.ToString("yyyyMMddHHmm"), "\\");
             var xmlConfig = new XmlDocument();
             string strError = "";
 
@@ -773,7 +775,7 @@ namespace DotNetNuke.Common.Utilities
 
         public static string UpdateValidationKey()
         {
-            string backupFolder = Globals.glbConfigFolder + "Backup_" + DateTime.Now.Year + DateTime.Now.Month + DateTime.Now.Day + DateTime.Now.Hour + DateTime.Now.Minute + "\\";
+			string backupFolder = string.Concat(Globals.glbConfigFolder, "Backup_", DateTime.Now.ToString("yyyyMMddHHmm"), "\\");
             var xmlConfig = new XmlDocument();
             string strError = "";
 
@@ -877,7 +879,7 @@ namespace DotNetNuke.Common.Utilities
             {
                 // we need to add the InstallVersion
 
-                string backupFolder = Globals.glbConfigFolder + "Backup_" + DateTime.Now.Year + DateTime.Now.Month + DateTime.Now.Day + DateTime.Now.Hour + DateTime.Now.Minute + "\\";
+				string backupFolder = string.Concat(Globals.glbConfigFolder, "Backup_", DateTime.Now.ToString("yyyyMMddHHmm"), "\\");
                 var xmlConfig = new XmlDocument();
                 //save the current config files
                 BackupConfig();

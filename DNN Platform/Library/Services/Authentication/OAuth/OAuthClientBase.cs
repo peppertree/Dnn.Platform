@@ -28,27 +28,28 @@
 //
 // Some modifications by Shannon Whitley
 // Author Url: http://voiceoftech.com/
+//
+// Additional modifications by Evan Smith (DNN-4143 & DNN-6265)
+// Author Url: http://skydnn.com
+
 
 #endregion
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Web;
-
 using DotNetNuke.Common;
 using DotNetNuke.Common.Utilities;
 using DotNetNuke.Entities.Users;
 using DotNetNuke.Security.Membership;
-
-using System.Collections.Specialized;
 using DotNetNuke.Instrumentation;
 using DotNetNuke.Entities.Portals;
-using DotNetNuke.Services.Installer.Log;
 
 namespace DotNetNuke.Services.Authentication.OAuth
 {
@@ -81,6 +82,10 @@ namespace DotNetNuke.Services.Authentication.OAuth
         private readonly Random random = new Random();
 
         private const string UnreservedChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~";
+        
+        //DNN-6265 - Support OAuth V2 optional parameter resource, which is required by Microsoft Azure Active
+        //Directory implementation of OAuth V2
+        private const string OAuthResourceKey = "resource";
 
         #endregion
 
@@ -140,6 +145,9 @@ namespace DotNetNuke.Services.Authentication.OAuth
         {
             get { return HttpContext.Current.Request.Params[OAuthCodeKey]; }
         }
+        
+        //DNN-6265 Support "Optional" Resource Parameter required by Azure AD Oauth V2 Solution
+        protected string APIResource { get; set; }
 
         #endregion
 
@@ -251,9 +259,16 @@ namespace DotNetNuke.Services.Authentication.OAuth
             IList<QueryParameter> parameters = new List<QueryParameter>();
             parameters.Add(new QueryParameter(OAuthClientIdKey, APIKey));
             parameters.Add(new QueryParameter(OAuthRedirectUriKey, HttpContext.Current.Server.UrlEncode(CallbackUri.ToString())));
-            parameters.Add(new QueryParameter(OAuthClientSecretKey, APISecret));
+            //DNN-6265 Support for OAuth V2 Secrets which are not URL Friendly
+            parameters.Add(new QueryParameter(OAuthClientSecretKey, HttpContext.Current.Server.UrlEncode(APISecret.ToString())));
             parameters.Add(new QueryParameter(OAuthGrantTyepKey, "authorization_code"));
             parameters.Add(new QueryParameter(OAuthCodeKey, VerificationCode));
+
+            //DNN-6265 Support for OAuth V2 optional parameter
+            if (!String.IsNullOrEmpty(APIResource))
+            {
+                parameters.Add(new QueryParameter("resource", APIResource));
+            }
 
             string responseText = ExecuteWebRequest(TokenMethod, TokenEndpoint, parameters.ToNormalizedString(), String.Empty);
 
@@ -520,7 +535,7 @@ namespace DotNetNuke.Services.Authentication.OAuth
 
         private void SaveTokenCookie(string suffix)
         {
-            var authTokenCookie = new HttpCookie(AuthTokenName + suffix);
+            var authTokenCookie = new HttpCookie(AuthTokenName + suffix) { Path = (!string.IsNullOrEmpty(Globals.ApplicationPath) ? Globals.ApplicationPath : "/") };
             authTokenCookie.Values[OAuthTokenKey] = AuthToken;
             authTokenCookie.Values[OAuthTokenSecretKey] = TokenSecret;
             authTokenCookie.Values[UserGuidKey] = UserGuid;
@@ -731,7 +746,11 @@ namespace DotNetNuke.Services.Authentication.OAuth
 
         public void RemoveToken()
         {
-            var authTokenCookie = new HttpCookie(AuthTokenName) {Expires = DateTime.Now.AddDays(-30)};
+            var authTokenCookie = new HttpCookie(AuthTokenName)
+            {
+                Expires = DateTime.Now.AddDays(-30),
+                Path = (!string.IsNullOrEmpty(Globals.ApplicationPath) ? Globals.ApplicationPath : "/")
+            };
             HttpContext.Current.Response.SetCookie(authTokenCookie);
         }
 

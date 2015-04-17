@@ -1143,7 +1143,7 @@ namespace DotNetNuke.Services.Upgrade
             }
         }
 
-        private static int RemoveModule(string desktopModuleName, string tabName, int parentId, bool removeTab)
+        public static int RemoveModule(string desktopModuleName, string tabName, int parentId, bool removeTab)
         {
             DnnInstallLogger.InstallLogInfo(Localization.Localization.GetString("LogStart", Localization.Localization.GlobalResourceFile) + "RemoveModule:" + desktopModuleName);
             TabInfo tab = TabController.Instance.GetTabByName(tabName, Null.NullInteger, parentId);
@@ -3021,6 +3021,52 @@ namespace DotNetNuke.Services.Upgrade
             NotificationsController.Instance.SetNotificationTypeActions(actions, notificationType.NotificationTypeId);
         }
 
+        private static void UpgradeToVersion740()
+        {
+            string PageHeadTextForUpgrade = "<meta content=\"text/html; charset=UTF-8\" http-equiv=\"Content-Type\" />" + "\n" +
+                                               "<meta name=\"REVISIT-AFTER\" content=\"1 DAYS\" />" + "\n" +
+                                               "<meta name=\"RATING\" content=\"GENERAL\" />" + "\n" +
+
+                                                "<meta name=\"RESOURCE-TYPE\" content=\"DOCUMENT\" />" + "\n" +
+                                                "<meta content=\"text/javascript\" http-equiv=\"Content-Script-Type\" />" + "\n" +
+                                                "<meta content=\"text/css\" http-equiv=\"Content-Style-Type\" />" + "\n";
+            ArrayList portals = PortalController.Instance.GetPortals();
+            foreach (PortalInfo portal in portals)
+            {
+                PortalController.UpdatePortalSetting(portal.PortalID, "PageHeadText", PageHeadTextForUpgrade);
+            }
+
+            RemoveContentListModuleFromSearchResultsPage();
+            ReIndexUserSearch();
+        }
+
+        private static void ReIndexUserSearch()
+        {
+            var portals = PortalController.Instance.GetPortals();
+            foreach (PortalInfo portal in portals)
+            {
+                PortalController.UpdatePortalSetting(portal.PortalID, UserIndexer.UserIndexResetFlag, "TRUE");
+            }
+        }
+
+        private static void RemoveContentListModuleFromSearchResultsPage()
+        {
+            var portals = PortalController.Instance.GetPortals();
+            foreach (PortalInfo portal in portals)
+            {
+                foreach (KeyValuePair<int, ModuleInfo> kvp in ModuleController.Instance.GetTabModules(portal.SearchTabId))
+                {
+                    var module = kvp.Value;
+                    if (module.DesktopModule.FriendlyName == "ContentList")
+                    {
+                        //Delete the Module from the Modules list
+                        ModuleController.Instance.DeleteTabModule(module.TabID, module.ModuleID, false);
+                        break;
+                    }
+                }
+            }
+        }
+
         private static void AddManageUsersModulePermissions()
         {
            var permCtl = new PermissionController();
@@ -4618,6 +4664,12 @@ namespace DotNetNuke.Services.Upgrade
                     {
                         if ((node != null))
                         {
+                            //add item to identity install from install wizard.
+                            if (HttpContext.Current != null)
+                            {
+                                HttpContext.Current.Items.Add("InstallFromWizard", true);
+                            }
+
                             int portalId = AddPortal(node, true, 2);
                             if (portalId > -1)
                             {
@@ -4773,49 +4825,26 @@ namespace DotNetNuke.Services.Upgrade
 
             var packages = new Dictionary<string, PackageInfo>();
 
-            foreach (string packageType in packageTypes)
-            {
-                var installPackagePath = Globals.ApplicationMapPath + "\\Install\\" + packageType;
-                if (Directory.Exists(installPackagePath))
-                {
-                    var files = Directory.GetFiles(installPackagePath);
-                    if (files.Length > 0)
-                    {
-                        foreach (string file in files)
-                        {
-                            if (Path.GetExtension(file.ToLower()) == ".zip")
-                            {
-                                PackageController.ParsePackage(file, installPackagePath, packages, invalidPackages);
-                                //HtmlUtils.WriteFeedback(HttpContext.Current.Response, 2, "Parsing - " + file.Replace(installPackagePath + @"\", "") + "<br/>");
-                            }
-                        }
-                    }
-                }
-            }
+            ParsePackagesFromApplicationPath(packageTypes, packages, invalidPackages);
 
             //Add packages with no dependency requirements
             var sortedPackages = packages.Where(p => p.Value.Dependencies.Count == 0).ToDictionary(p => p.Key, p => p.Value);
 
-            int prevDependentCount = -1;
+            var prevDependentCount = -1;
 
             var dependentPackages = packages.Where(p => p.Value.Dependencies.Count > 0).ToDictionary(p=> p.Key, p => p.Value);
-            int dependentCount = dependentPackages.Count;
-            //HtmlUtils.WriteFeedback(HttpContext.Current.Response, 2, "Start - Parsing Dependencies<br/>");
+            var dependentCount = dependentPackages.Count;
             while (dependentCount != prevDependentCount)
             {
                 prevDependentCount = dependentCount;
                 var addedPackages = new List<string>();
                 foreach (var package in dependentPackages)
                 {
-                    //HtmlUtils.WriteFeedback(HttpContext.Current.Response, 4, "Parsing - " + package.Value.Name + "<br/>");
-                    foreach (var dependency in package.Value.Dependencies)
+                    if ( package.Value.Dependencies.All(
+                            d => sortedPackages.Any(p => p.Value.Name == d.PackageName && p.Value.Version >= d.Version) ) )
                     {
-                        if (sortedPackages.Count(p => p.Value.Name == dependency.PackageName && p.Value.Version >= dependency.Version) > 0)
-                        {
-                            //HtmlUtils.WriteFeedback(HttpContext.Current.Response, 4, "Dependency Resolved - " + package.Value.Name + "<br/>");
-                            sortedPackages.Add(package.Key, package.Value);
-                            addedPackages.Add(package.Key);
-                        }
+                        sortedPackages.Add(package.Key, package.Value);
+                        addedPackages.Add(package.Key);
                     }
                 }
                 foreach (var packageKey in addedPackages)
@@ -4831,13 +4860,27 @@ namespace DotNetNuke.Services.Upgrade
                 sortedPackages.Add(package.Key, package.Value);
             }
 
-            //HtmlUtils.WriteFeedback(HttpContext.Current.Response, 2, "End - Parsing Dependencies<br/>");
-
-            //foreach (var package in sortedPackages)
-            //{
-            //    HtmlUtils.WriteFeedback(HttpContext.Current.Response, 2, "Installing - " + package.Key + "<br/>");
-            //}
             return sortedPackages;
+        }
+
+        private static void ParsePackagesFromApplicationPath(IEnumerable<string> packageTypes, Dictionary<string, PackageInfo> packages, List<string> invalidPackages)
+        {
+            foreach (var packageType in packageTypes)
+            {
+                var installPackagePath = Globals.ApplicationMapPath + "\\Install\\" + packageType;
+                if (!Directory.Exists(installPackagePath)){ continue;}
+
+                var files = Directory.GetFiles(installPackagePath);
+                if (files.Length <= 0){ continue;}
+
+                foreach (var file in files)
+                {
+                    if (Path.GetExtension(file.ToLower()) == ".zip")
+                    {
+                        PackageController.ParsePackage(file, installPackagePath, packages, invalidPackages);
+                    }
+                }
+            }
         }
 
         public static void InstallPackages(string packageType, bool writeFeedback)
@@ -5162,6 +5205,9 @@ namespace DotNetNuke.Services.Upgrade
                     case "7.3.3":
                         UpgradeToVersion733();
                         break;
+                    case "7.4.0":
+                        UpgradeToVersion740();
+                        break;
                 }
             }
             catch (Exception ex)
@@ -5381,10 +5427,8 @@ namespace DotNetNuke.Services.Upgrade
             if (Host.CheckUpgrade && version != new Version(0, 0, 0))
             {
                 url = DotNetNukeContext.Current.Application.UpgradeUrl + "/update.aspx";
-                if (UrlUtils.IsSecureConnectionOrSslOffload(HttpContext.Current.Request))
-                {
-                    url = url.Replace("http://", "https://");
-                }
+                //use network path reference so it works in ssl-offload scenarios
+                url = url.Replace("http://", "//");
                 url += "?core=" + Globals.FormatVersion(Assembly.GetExecutingAssembly().GetName().Version, "00", 3, "");
                 url += "&version=" + Globals.FormatVersion(version, "00", 3, "");
                 url += "&type=" + packageType;

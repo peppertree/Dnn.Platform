@@ -22,7 +22,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using DotNetNuke.Common;
 using DotNetNuke.Common.Utilities;
 using DotNetNuke.Entities.Modules;
@@ -92,15 +91,15 @@ namespace DotNetNuke.Entities.Tabs
             int urlVersion;
             if (TabVersionUtils.TryGetUrlVersion(out urlVersion))
             {
-                return TabVersionMaker.Instance.GetVersionModules(tab.TabID, urlVersion);
+                return TabVersionBuilder.Instance.GetVersionModules(tab.TabID, urlVersion);
             }
             
             if (Globals.IsEditMode())
             {
-                return TabVersionMaker.Instance.GetUnPublishedVersionModules(tab.TabID);
+                return TabVersionBuilder.Instance.GetUnPublishedVersionModules(tab.TabID);
             }
 
-            return  tab.ChildModules.Select(kvp => kvp.Value.Clone());
+            return TabVersionBuilder.Instance.GetCurrentModules(tab.TabID);
         }
         #endregion
 

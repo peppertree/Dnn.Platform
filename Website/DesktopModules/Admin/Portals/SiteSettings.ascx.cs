@@ -154,7 +154,7 @@ namespace DesktopModules.Admin.Portals
 
             foreach (var objDicModule in dicModules.Values)
             {
-                DnnComboBoxItem comboBoxItem = new DnnComboBoxItem(objDicModule.ModuleName, objDicModule.DesktopModuleID.ToString());
+                DnnComboBoxItem comboBoxItem = new DnnComboBoxItem(objDicModule.FriendlyName, objDicModule.DesktopModuleID.ToString());
                 foreach (var objPortalDesktopModule in dicPortalDesktopModules.Values)
                 {
                     if (objPortalDesktopModule.DesktopModuleID == objDicModule.DesktopModuleID)
@@ -247,7 +247,9 @@ namespace DesktopModules.Admin.Portals
 
             optMsgAllowAttachments.Select(PortalController.GetPortalSetting("MessagingAllowAttachments", portal.PortalID, "NO"), false);
             optMsgProfanityFilters.Select(PortalController.GetPortalSetting("MessagingProfanityFilters", portal.PortalID, "NO"), false);
-            optMsgSendEmail.Select(PortalController.GetPortalSetting("MessagingSendEmail", portal.PortalID, "YES"), false);        
+            optMsgSendEmail.Select(PortalController.GetPortalSetting("MessagingSendEmail", portal.PortalID, "YES"), false);
+
+	        chkDisablePrivateMessage.Checked = PortalSettings.DisablePrivateMessage;
         }
 
         private void BindPages(PortalInfo portal, string activeLanguage)
@@ -332,6 +334,7 @@ namespace DesktopModules.Admin.Portals
         private void BindPortal(int portalId, string activeLanguage)
         {
             var portal = PortalController.Instance.GetPortal(portalId, activeLanguage);
+            var portalsettings = new PortalSettings(portal);
 
             if (Page.IsPostBack == false)
             {
@@ -430,6 +433,7 @@ namespace DesktopModules.Admin.Portals
                 chkOverrideDefaultSettings.Checked = overrideDefaultSettings;
                 BindClientResourceManagementUi(portal.PortalID, overrideDefaultSettings);
                 ManageMinificationUi();
+                BindPageOutputSettings(portal);
             }
 
             BindUserAccountSettings(portal, activeLanguage);
@@ -538,29 +542,29 @@ namespace DesktopModules.Admin.Portals
 
         private void BindSkins(PortalInfo portal)
         {
-            portalSkinCombo.PortalId = PortalId;
+            portalSkinCombo.PortalId = portal.PortalID;
             portalSkinCombo.RootPath = SkinController.RootSkin;
             portalSkinCombo.Scope = SkinScope.All;
-            portalSkinCombo.SelectedValue = PortalController.GetPortalSetting("DefaultPortalSkin", portal.PortalID, Host.DefaultPortalSkin);
+            portalSkinCombo.SelectedValue = PortalController.GetPortalSetting("DefaultPortalSkin", portal.PortalID, Host.DefaultPortalSkin, SelectedCultureCode);
 
-            portalContainerCombo.PortalId = PortalId;
+            portalContainerCombo.PortalId = portal.PortalID;
             portalContainerCombo.RootPath = SkinController.RootContainer;
             portalContainerCombo.Scope = SkinScope.All;
-            portalContainerCombo.SelectedValue = PortalController.GetPortalSetting("DefaultPortalContainer", portal.PortalID, Host.DefaultPortalContainer);
+            portalContainerCombo.SelectedValue = PortalController.GetPortalSetting("DefaultPortalContainer", portal.PortalID, Host.DefaultPortalContainer, SelectedCultureCode);
 
-            editSkinCombo.PortalId = PortalId;
+            editSkinCombo.PortalId = portal.PortalID;
             editSkinCombo.RootPath = SkinController.RootSkin;
             editSkinCombo.Scope = SkinScope.All;
-            editSkinCombo.SelectedValue = PortalController.GetPortalSetting("DefaultAdminSkin", portal.PortalID, Host.DefaultAdminSkin);
+            editSkinCombo.SelectedValue = PortalController.GetPortalSetting("DefaultAdminSkin", portal.PortalID, Host.DefaultAdminSkin, SelectedCultureCode);
 
-            editContainerCombo.PortalId = PortalId;
+            editContainerCombo.PortalId = portal.PortalID;
             editContainerCombo.RootPath = SkinController.RootContainer;
             editContainerCombo.Scope = SkinScope.All;
-            editContainerCombo.SelectedValue = PortalController.GetPortalSetting("DefaultAdminContainer", portal.PortalID, Host.DefaultAdminContainer);
+            editContainerCombo.SelectedValue = PortalController.GetPortalSetting("DefaultAdminContainer", portal.PortalID, Host.DefaultAdminContainer, SelectedCultureCode);
 
             iconSetCombo.DataSource = IconController.GetIconSets();
             iconSetCombo.DataBind();
-            iconSetCombo.SelectedValue = PortalController.GetPortalSetting("DefaultIconLocation", portal.PortalID, "Sigma").Replace("icons/","");
+            iconSetCombo.SelectedValue = PortalController.GetPortalSetting("DefaultIconLocation", portal.PortalID, "Sigma", SelectedCultureCode).Replace("icons/", "");
 
             if (ModuleContext.PortalSettings.UserInfo.IsSuperUser)
             {
@@ -600,7 +604,6 @@ namespace DesktopModules.Admin.Portals
             var portalSettings = new PortalSettings(portal);
             chkInlineEditor.Checked = portalSettings.InlineEditorEnabled;
             enablePopUpsCheckBox.Checked = portalSettings.EnablePopUps;
-            enableModuleEffectCheckBox.Checked = portalSettings.EnableModuleEffect;
             chkHideSystemFolders.Checked = portalSettings.HideFoldersEnabled;
 
             var mode = (portalSettings.DefaultControlPanelMode == PortalSettings.Mode.Edit) ? "EDIT" : "VIEW";
@@ -620,8 +623,7 @@ namespace DesktopModules.Admin.Portals
                 basicRegistrationSettings.DataSource = settings;
                 basicRegistrationSettings.DataBind();
 
-                var setting = PortalController.GetPortalSettingAsInteger("Registration_RegistrationFormType", portal.PortalID, 0);
-                registrationFormType.Select(setting.ToString(CultureInfo.InvariantCulture));
+				registrationFormType.Select(PortalSettings.Registration.RegistrationFormType.ToString(CultureInfo.InvariantCulture));
 
                 standardRegistrationSettings.DataSource = settings;
                 standardRegistrationSettings.DataBind();
@@ -629,7 +631,7 @@ namespace DesktopModules.Admin.Portals
                 validationRegistrationSettings.DataSource = settings;
                 validationRegistrationSettings.DataBind();
 
-                var customRegistrationFields = PortalController.GetPortalSetting("Registration_RegistrationFields", portal.PortalID, String.Empty);
+				var customRegistrationFields = PortalSettings.Registration.RegistrationFields;
 
                 CustomRegistrationFields = BuildCustomRegistrationFields(customRegistrationFields);
 
@@ -653,7 +655,7 @@ namespace DesktopModules.Admin.Portals
                 var tabs = listTabs.Where(t => t.DisableLink == false).ToList();
 
                 //using values from current portal
-                var redirectTab = PortalController.GetPortalSettingAsInteger("Redirect_AfterRegistration", portal.PortalID, 0);
+                var redirectTab = PortalSettings.Registration.RedirectAfterRegistration;
                 if (redirectTab > 0)
                 {
                     RedirectAfterRegistration.SelectedPage = tabs.SingleOrDefault(t => t.TabID == redirectTab);
@@ -675,7 +677,7 @@ namespace DesktopModules.Admin.Portals
                 loginSettings.DataBind();
 
                 //using values from current portal
-                redirectTab = PortalController.GetPortalSettingAsInteger("Redirect_AfterLogin", portal.PortalID, 0);
+                redirectTab = PortalSettings.Registration.RedirectAfterLogin;
                 if (redirectTab > 0)
                 {
                     RedirectAfterLogin.SelectedPage = tabs.SingleOrDefault(t => t.TabID == redirectTab);
@@ -683,7 +685,7 @@ namespace DesktopModules.Admin.Portals
                 RedirectAfterLogin.PortalId = portal.PortalID;
 
                 //using values from current portal
-                redirectTab = PortalController.GetPortalSettingAsInteger("Redirect_AfterLogout", portal.PortalID, 0);
+				redirectTab = PortalSettings.Registration.RedirectAfterLogout;
 
                 if (redirectTab > 0)
                 {
@@ -766,6 +768,17 @@ namespace DesktopModules.Admin.Portals
                 }
             }
 
+        }
+        private void BindPageOutputSettings(PortalInfo portal)
+        {
+            if (portal != null)
+            {
+                var portalSettings = new PortalSettings(portal);
+                txtPageHeadText.Text = portalSettings.PageHeadText;
+                chkInjectModuleHyperLink.Checked = portalSettings.InjectModuleHyperLink;
+                txtAddCompatibleHttpHeader.Text = portalSettings.AddCompatibleHttpHeader;
+                chkAddCachebusterToResourceUris.Checked = portalSettings.AddCachebusterToResourceUris;
+            }
         }
 
         #endregion
@@ -1389,13 +1402,12 @@ namespace DesktopModules.Admin.Portals
                     PortalController.UpdatePortalSetting(_portalId, ClientResourceSettings.MinifyJsKey, chkMinifyJs.Checked.ToString(CultureInfo.InvariantCulture), false);
 
                     PortalController.UpdatePortalSetting(_portalId, "EnableSkinWidgets", chkSkinWidgestEnabled.Checked.ToString(), false);
-                    PortalController.UpdatePortalSetting(_portalId, "DefaultAdminSkin", editSkinCombo.SelectedValue, false);
-                    PortalController.UpdatePortalSetting(_portalId, "DefaultPortalSkin", portalSkinCombo.SelectedValue, false);
-                    PortalController.UpdatePortalSetting(_portalId, "DefaultAdminContainer", editContainerCombo.SelectedValue, false);
-                    PortalController.UpdatePortalSetting(_portalId, "DefaultPortalContainer", portalContainerCombo.SelectedValue, false);
-                    PortalController.UpdatePortalSetting(_portalId, "DefaultIconLocation", "icons/" + iconSetCombo.SelectedValue, false);
-                    PortalController.UpdatePortalSetting(_portalId, "EnablePopups", enablePopUpsCheckBox.Checked.ToString(), false);
-                    PortalController.UpdatePortalSetting(_portalId, "EnableModuleEffect", enableModuleEffectCheckBox.Checked.ToString(), false);
+                    PortalController.UpdatePortalSetting(_portalId, "DefaultAdminSkin", editSkinCombo.SelectedValue, false, SelectedCultureCode);
+                    PortalController.UpdatePortalSetting(_portalId, "DefaultPortalSkin", portalSkinCombo.SelectedValue, false, SelectedCultureCode);
+                    PortalController.UpdatePortalSetting(_portalId, "DefaultAdminContainer", editContainerCombo.SelectedValue, false, SelectedCultureCode);
+                    PortalController.UpdatePortalSetting(_portalId, "DefaultPortalContainer", portalContainerCombo.SelectedValue, false, SelectedCultureCode);
+                    PortalController.UpdatePortalSetting(_portalId, "DefaultIconLocation", "icons/" + iconSetCombo.SelectedValue, false, SelectedCultureCode);
+                    PortalController.UpdatePortalSetting(_portalId, "EnablePopUps", enablePopUpsCheckBox.Checked.ToString(), false);
                     PortalController.UpdatePortalSetting(_portalId, "InlineEditorEnabled", chkInlineEditor.Checked.ToString(), false);
                     PortalController.UpdatePortalSetting(_portalId, "HideFoldersEnabled", chkHideSystemFolders.Checked.ToString(), false);
                     PortalController.UpdatePortalSetting(_portalId, "ControlPanelMode", optControlPanelMode.SelectedItem.Value, false);
@@ -1406,7 +1418,8 @@ namespace DesktopModules.Admin.Portals
                     PortalController.UpdatePortalSetting(_portalId, "MessagingRecipientLimit", cboMsgRecipientLimit.SelectedItem.Value, false);
                     PortalController.UpdatePortalSetting(_portalId, "MessagingAllowAttachments", optMsgAllowAttachments.SelectedItem.Value, false);
                     PortalController.UpdatePortalSetting(_portalId, "MessagingProfanityFilters", optMsgProfanityFilters.SelectedItem.Value, false);
-                    PortalController.UpdatePortalSetting(_portalId, "MessagingSendEmail", optMsgSendEmail.SelectedItem.Value, false);
+					PortalController.UpdatePortalSetting(_portalId, "MessagingSendEmail", optMsgSendEmail.SelectedItem.Value, false);
+					PortalController.UpdatePortalSetting(_portalId, "DisablePrivateMessage", chkDisablePrivateMessage.Checked ? "Y" : "N", false);
 
                     PortalController.UpdatePortalSetting(_portalId, "paypalsandbox", chkPayPalSandboxEnabled.Checked.ToString(), false);
                     PortalController.UpdatePortalSetting(_portalId, "paypalsubscriptionreturn", txtPayPalReturnURL.Text, false);
@@ -1472,8 +1485,29 @@ namespace DesktopModules.Admin.Portals
                         PortalController.UpdatePortalSetting(_portalId, item.DataField, item.Value.ToString());
                     }
 
+                    //DNN-6093
                     foreach (DnnFormItemBase item in standardRegistrationSettings.Items)
                     {
+                        //Make sure that enabling Registration_UseEmailAsUserName doesn't cause issues with duplicate e-mail addresses
+                        if (item.DataField.ToLower() == "registration_useemailasusername" && Boolean.Parse(item.Value.ToString()) == true)
+                        {
+                            if (UserController.GetDuplicateEmailCount() > 0)
+                            {
+                                string message = Localization.GetString("ContainsDuplicateAddresses", LocalResourceFile);
+                                DotNetNuke.UI.Skins.Skin.AddModuleMessage(this, message, ModuleMessage.ModuleMessageType.RedError);
+                                return;
+                            }
+                            
+                            // can't actualy use this as web.config settings are system wide.
+
+                            //if (MembershipProvider.Instance().RequiresUniqueEmail == false)
+                            //{
+                            //    string message = Localization.GetString("MustEnableUniqueEmail", LocalResourceFile);
+                            //    DotNetNuke.UI.Skins.Skin.AddModuleMessage(this, message, ModuleMessage.ModuleMessageType.RedError);
+                            //    return;
+                            //}
+
+                        }
                         PortalController.UpdatePortalSetting(_portalId, item.DataField, item.Value.ToString());
                     }
 
@@ -1506,7 +1540,7 @@ namespace DesktopModules.Admin.Portals
                     var redirectTabId = !String.IsNullOrEmpty(RedirectAfterRegistration.SelectedItem.Value) ?
                                         RedirectAfterRegistration.SelectedItem.Value
                                         : "-1";
-                    PortalController.UpdatePortalSetting(_portalId, "Redirect_AfterRegistration", redirectTabId);
+                    PortalController.UpdatePortalSetting(_portalId, "Redirect_AfterRegistration", redirectTabId, SelectedCultureCode);
 
                     foreach (DnnFormItemBase item in loginSettings.Items)
                     {
@@ -1515,11 +1549,11 @@ namespace DesktopModules.Admin.Portals
                     redirectTabId = !String.IsNullOrEmpty(RedirectAfterLogin.SelectedItem.Value) ?
                                         RedirectAfterLogin.SelectedItem.Value
                                         : "-1";
-                    PortalController.UpdatePortalSetting(_portalId, "Redirect_AfterLogin", redirectTabId);
+                    PortalController.UpdatePortalSetting(_portalId, "Redirect_AfterLogin", redirectTabId, SelectedCultureCode);
                     redirectTabId = !String.IsNullOrEmpty(RedirectAfterLogout.SelectedItem.Value) ?
                                         RedirectAfterLogout.SelectedItem.Value
                                         : "-1";
-                    PortalController.UpdatePortalSetting(_portalId, "Redirect_AfterLogout", redirectTabId);
+                    PortalController.UpdatePortalSetting(_portalId, "Redirect_AfterLogout", redirectTabId, SelectedCultureCode);
 
                     var defaultAuthProvider = !String.IsNullOrEmpty(authProviderCombo.SelectedItem.Value) ?
                                         authProviderCombo.SelectedItem.Value
@@ -1535,6 +1569,11 @@ namespace DesktopModules.Admin.Portals
                                                                     : item.Value.ToString()
                                                                 );
                     }
+
+                    PortalController.UpdatePortalSetting(_portalId, "PageHeadText", string.IsNullOrEmpty(txtPageHeadText.Text) ? "false" : txtPageHeadText.Text); // Hack to store empty string portalsetting with non empty default value
+                    PortalController.UpdatePortalSetting(_portalId, "InjectModuleHyperLink", chkInjectModuleHyperLink.Checked.ToString());
+                    PortalController.UpdatePortalSetting(_portalId, "AddCompatibleHttpHeader", string.IsNullOrEmpty(txtAddCompatibleHttpHeader.Text) ? "false" : txtAddCompatibleHttpHeader.Text); // Hack to store empty string portalsetting with non empty default value
+                    PortalController.UpdatePortalSetting(_portalId, "AddCachebusterToResourceUris", chkAddCachebusterToResourceUris.Checked.ToString());
 
                     profileDefinitions.Update();
 

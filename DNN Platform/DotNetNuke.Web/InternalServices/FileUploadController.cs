@@ -32,12 +32,9 @@ using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Net.Http.Headers;
 using System.Runtime.Serialization;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
-using System.Web.Hosting;
 using System.Web.Http;
 using System.Web.UI.WebControls;
 using ClientDependency.Core;
@@ -49,6 +46,7 @@ using DotNetNuke.Entities.Portals;
 using DotNetNuke.Entities.Users;
 using DotNetNuke.Instrumentation;
 using DotNetNuke.Security;
+using DotNetNuke.Security.Permissions;
 using DotNetNuke.Services.FileSystem;
 using DotNetNuke.Services.Localization;
 using DotNetNuke.Web.Api;
@@ -227,11 +225,7 @@ namespace DotNetNuke.Web.InternalServices
                                     Message = string.Format(GetLocalizedString("ErrorMessage"), fileName, errorMessage)
                                 }, mediaTypeFormatter, "text/plain");
                         }
-
-                        var root = AppDomain.CurrentDomain.BaseDirectory;
-                        returnFileDto.FilePath = returnFileDto.FilePath.Replace(root, "~/");
-                        returnFileDto.FilePath = VirtualPathUtility.ToAbsolute(returnFileDto.FilePath);
-
+                        
                         return Request.CreateResponse(HttpStatusCode.OK, returnFileDto, mediaTypeFormatter, "text/plain");
                     });
 
@@ -312,7 +306,7 @@ namespace DotNetNuke.Web.InternalServices
 
                 errorMessage = "";
                 savedFileDto.FileId = file.FileId.ToString(CultureInfo.InvariantCulture);
-                savedFileDto.FilePath = Path.Combine(folderInfo.PhysicalPath, fileName);
+                savedFileDto.FilePath = FileManager.Instance.GetUrl(file);
                 return savedFileDto;
             }
             catch (Exception ex)
@@ -509,8 +503,8 @@ namespace DotNetNuke.Web.InternalServices
                     }
                 }
 
-                if (!PortalSecurity.IsInRoles(userInfo, portalSettings, folderInfo.FolderPermissions.ToString("WRITE"))
-                    && !PortalSecurity.IsInRoles(userInfo, portalSettings, folderInfo.FolderPermissions.ToString("ADD")))
+                if (!FolderPermissionController.HasFolderPermission(portalSettings.PortalId, folder, "WRITE")
+                    && !FolderPermissionController.HasFolderPermission(portalSettings.PortalId, folder, "ADD"))
                 {
                     result.Message = GetLocalizedString("NoPermission");
                     return result;
@@ -719,31 +713,20 @@ namespace DotNetNuke.Web.InternalServices
                 {
                     throw new Exception("No server response");
                 }
-                var inMemoryStream = new MemoryStream();
-                {
-                    var count = 0;
-                    do
-                    {
-                        var buffer = new byte[4096];
-                        count = responseStream.Read(buffer, 0, 4096);
-                        inMemoryStream.Write(buffer, 0, count);
-                    } while (responseStream.CanRead && count > 0);
 
-                    var segments = dto.Url.Split('/');
-                    var fileName = segments[segments.Length - 1];
-                    result = UploadFile(inMemoryStream, PortalSettings, UserInfo, dto.Folder.TextOrEmpty(), dto.Filter.TextOrEmpty(),
-                        fileName, dto.Overwrite, dto.IsHostMenu, dto.Unzip);
+                var fileName = new Uri(dto.Url).Segments.Last();                    
+                result = UploadFile(responseStream, PortalSettings, UserInfo, dto.Folder.TextOrEmpty(), dto.Filter.TextOrEmpty(),
+                    fileName, dto.Overwrite, dto.IsHostMenu, dto.Unzip);
 
-                    /* Response Content Type cannot be application/json 
-                     * because IE9 with iframe-transport manages the response 
-                     * as a file download 
-                     */
-                    return Request.CreateResponse(
-                        HttpStatusCode.OK,
-                        result,
-                        mediaTypeFormatter,
-                        "text/plain");
-                }
+                /* Response Content Type cannot be application/json 
+                    * because IE9 with iframe-transport manages the response 
+                    * as a file download 
+                    */
+                return Request.CreateResponse(
+                    HttpStatusCode.OK,
+                    result,
+                    mediaTypeFormatter,
+                    "text/plain");
             }
             catch (Exception ex)
             {

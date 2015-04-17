@@ -90,6 +90,8 @@ namespace DotNetNuke.Entities.Users
 
         #endregion
 
+        private static event EventHandler<UserEventArgs> UserAuthenticated;
+
         private static event EventHandler<UserEventArgs> UserCreated;
 
         private static event EventHandler<UserEventArgs> UserDeleted;
@@ -100,8 +102,9 @@ namespace DotNetNuke.Entities.Users
 
         static UserController()
         {            
-            foreach (var handlers in EventHandlersContainer<IUserEventHandlers>.Instance.EventHandlers)            
+            foreach (var handlers in EventHandlersContainer<IUserEventHandlers>.Instance.EventHandlers)
             {
+                UserAuthenticated += handlers.Value.UserAuthenticated;
                 UserCreated += handlers.Value.UserCreated;
                 UserDeleted += handlers.Value.UserDeleted;
                 UserRemoved += handlers.Value.UserRemoved;
@@ -583,6 +586,16 @@ namespace DotNetNuke.Entities.Users
             }
         }
 
+        /// -----------------------------------------------------------------------------
+        /// <summary>
+        /// Gets the number count for all duplicate e-mail adresses in the database
+        /// </summary>
+        /// -----------------------------------------------------------------------------
+        public static int GetDuplicateEmailCount()
+        {
+            return DataProvider.Instance().GetDuplicateEmailCount(PortalSettings.Current.PortalId);
+        }
+
         #endregion
 
         #region Public Helper Methods
@@ -832,7 +845,7 @@ namespace DotNetNuke.Entities.Users
         /// -----------------------------------------------------------------------------
         public static void DeleteUnauthorizedUsers(int portalId)
         {
-            var arrUsers = GetUsers(portalId);
+	        var arrUsers = GetUnAuthorizedUsers(portalId);
             for (int i = 0; i < arrUsers.Count; i++)
             {
                 var user = arrUsers[i] as UserInfo;
@@ -861,7 +874,9 @@ namespace DotNetNuke.Entities.Users
             int portalId = user.PortalID;
             user.PortalID = GetEffectivePortalId(portalId);
 
-            var portalSettings = PortalController.Instance.GetCurrentPortalSettings();
+            // If the HTTP Current Context is unavailable (e.g. when called from within a SchedulerClient) GetCurrentPortalSettings() returns null and the 
+            // PortalSettings are created/loaded for the portal (originally) assigned to the user.
+            var portalSettings = PortalController.Instance.GetCurrentPortalSettings() ?? new PortalSettings(portalId);
 
             var canDelete = deleteAdmin || (user.UserID != portalSettings.AdministratorId);
 
@@ -874,7 +889,7 @@ namespace DotNetNuke.Entities.Users
 
             if (canDelete)
             {
-                //Obtain PortalSettings from Current Context
+                //Obtain PortalSettings from Current Context or from the users (original) portal if the HTTP Current Context is unavailable.
                 EventLogController.Instance.AddLog("Username", user.Username, portalSettings, user.UserID, EventLogController.EventLogType.USER_DELETED);
                 if (notify && !user.IsSuperUser)
                 {
@@ -1228,7 +1243,7 @@ namespace DotNetNuke.Entities.Users
             var settings = GetDefaultUserSettings();
             Dictionary<string, string> settingsDictionary = (portalId == Null.NullInteger)
                                                             ? HostController.Instance.GetSettingsDictionary()
-                                                            : PortalController.GetPortalSettingsDictionary(GetEffectivePortalId(portalId));
+                                                            : PortalController.Instance.GetPortalSettings(GetEffectivePortalId(portalId));
             if (settingsDictionary != null)
             {
                 foreach (KeyValuePair<string, string> kvp in settingsDictionary)
@@ -1355,6 +1370,28 @@ namespace DotNetNuke.Entities.Users
         public static ArrayList GetUsersByEmail(int portalId, string emailToMatch, int pageIndex, int pageSize, ref int totalRecords)
         {
             return GetUsersByEmail(portalId, emailToMatch, pageIndex, pageSize, ref totalRecords, false, false);
+        }
+
+        /// -----------------------------------------------------------------------------
+        /// <summary>
+        /// GetUserByEmail gets one single user matching the email address provided
+        /// This will only be useful in portals without duplicate email addresses
+        /// filter expression
+        /// </summary>
+        /// <remarks>
+        /// </remarks>
+        /// <param name="portalId">The Id of the Portal</param>
+        /// <param name="emailToMatch">The email address to use to find a match.</param>
+        /// <returns>A single user object or null if no user found</returns>
+        /// -----------------------------------------------------------------------------
+        public static UserInfo GetUserByEmail(int portalId, string emailToMatch)
+        {
+            int uid = DataProvider.Instance().GetSingleUserByEmail(portalId, emailToMatch);
+            if (uid > -1)
+            {
+                return GetUserById(portalId, uid);
+            }
+            return null;
         }
 
         /// -----------------------------------------------------------------------------
@@ -1495,7 +1532,7 @@ namespace DotNetNuke.Entities.Users
 
         public static void RemoveDeletedUsers(int portalId)
         {
-            var arrUsers = GetUsers(true, false, portalId);
+	        var arrUsers = GetDeletedUsers(portalId);
 
             foreach (UserInfo objUser in arrUsers)
             {
@@ -1536,6 +1573,7 @@ namespace DotNetNuke.Entities.Users
                     {
                         //try to remove the parent folder if there is no other users use this folder.
                         var parentFolder = FolderManager.Instance.GetFolder(userFolder.ParentID);
+                        FolderManager.Instance.Synchronize(folderPortalId, parentFolder.FolderPath, true, true);
                         if(parentFolder != null && !FolderManager.Instance.GetFolders(parentFolder).Any())
                         {
                             FolderManager.Instance.DeleteFolder(parentFolder, notDeletedSubfolders);
@@ -1544,6 +1582,7 @@ namespace DotNetNuke.Entities.Users
                             {
                                 //try to remove the root folder if there is no other users use this folder.
                                 var rootFolder = FolderManager.Instance.GetFolder(parentFolder.ParentID);
+                                FolderManager.Instance.Synchronize(folderPortalId, rootFolder.FolderPath, true, true);
                                 if (rootFolder != null && !FolderManager.Instance.GetFolders(rootFolder).Any())
                                 {
                                     FolderManager.Instance.DeleteFolder(rootFolder, notDeletedSubfolders);
@@ -1841,6 +1880,11 @@ namespace DotNetNuke.Entities.Users
             //set the forms authentication cookie ( log the user in )
             var security = new PortalSecurity();
             security.SignIn(user, createPersistentCookie);
+
+            if (UserAuthenticated != null)
+            {
+                UserAuthenticated(null, new UserEventArgs() {User = user});
+            }
         }
 
         /// -----------------------------------------------------------------------------

@@ -250,11 +250,7 @@
                         <dnn:label id="enablePopUpsLabel" runat="server" controlname="enablePopUpsCheckBox" />
                         <asp:CheckBox ID="enablePopUpsCheckBox" runat="server" />
                     </div>
-                    <div class="dnnFormItem">
-                        <dnn:label id="enableModuleEffectLabel" runat="server" controlname="enableModuleEffectCheckBox" />
-                        <asp:CheckBox ID="enableModuleEffectCheckBox" runat="server" />
-                    </div>
-                    <div class="dnnFormItem">
+                   <div class="dnnFormItem">
                         <dnn:label id="plInlineEditor" runat="server" controlname="chkInlineEditor" />
                         <asp:CheckBox ID="chkInlineEditor" runat="server" />
                     </div>
@@ -387,6 +383,10 @@
                         <a href=""><%=LocalizeString("MessagingSettings")%></a>
                     </h2>
                     <fieldset>
+	                    <div class="dnnFormItem">
+                            <dnn:label id="plDisablePrivateMessage" runat="server" controlname="chkDisablePrivateMessage" />
+                            <asp:CheckBox ID="chkDisablePrivateMessage" runat="server" />
+                        </div>
                         <div class="dnnFormItem">
                             <dnn:label id="plMsgThrottlingInterval" runat="server" controlname="cboMsgThrottlingInterval" />
                             <dnn:DnnComboBox ID="cboMsgThrottlingInterval" runat="server" DataTextField="Key" DataValueField="Value" />
@@ -492,6 +492,27 @@
                         <div class="dnnFormItem" runat="server" id="MinifyJsRow">
                             <dnn:label id="plMinifyJs" runat="server" controlname="chkMinifyJs" />
                             <asp:CheckBox runat="server" ID="chkMinifyJs" />
+                        </div>
+                    </fieldset>
+                    <h2 id="dnnSitePanel-PageHeaders" class="dnnFormSectionHead">
+                        <a href="" class="dnnSectionExpanded"><%=LocalizeString("PageHeaders")%></a>
+                    </h2>
+                    <fieldset>
+                        <div class="dnnFormItem">
+                            <dnn:label id="plPageHeadText" runat="server" controlname="txtPageHeadText" />
+                            <asp:TextBox ID="txtPageHeadText" runat="server" TextMode="MultiLine" />
+                        </div>
+                        <div class="dnnFormItem">
+                            <dnn:label id="plInjectModuleHyperLink" runat="server" controlname="chkInjectModuleHyperLink" />
+                            <asp:CheckBox runat="server" ID="chkInjectModuleHyperLink" />
+                        </div>
+                        <div class="dnnFormItem">
+                            <dnn:label id="plAddCompatibleHttpHeader" runat="server" controlname="txtAddCompatibleHttpHeader" />
+                            <asp:TextBox ID="txtAddCompatibleHttpHeader" runat="server" />                            
+                        </div>
+                        <div class="dnnFormItem">
+                            <dnn:label id="plAddCachebusterToResourceUris" runat="server" controlname="chkAddCachebusterToResourceUris" />
+                            <asp:CheckBox runat="server" ID="chkAddCachebusterToResourceUris" />
                         </div>
                     </fieldset>
                 </div>
@@ -756,7 +777,7 @@
             skinSelector: '<%= portalSkinCombo.ClientID %>',
             containerSelector: '<%= portalContainerCombo.ClientID %>',
             baseUrl: '//<%= this.PortalAlias.HTTPAlias %>',
-            noSelectionMessage: '<%= DotNetNuke.UI.Utilities.ClientAPI.GetSafeJSString(LocalizeString("PreviewNoSelectionMessage.Text")) %>',
+            noSelectionMessage: '<%= LocalizeSafeJsString("PreviewNoSelectionMessage.Text") %>',
             alertCloseText: '<%= Localization.GetSafeJSString("Close.Text", Localization.SharedResourceFile)%>',
             alertOkText: '<%= Localization.GetSafeJSString("Ok.Text", Localization.SharedResourceFile)%>',
             useComboBox: true
@@ -765,7 +786,7 @@
             skinSelector: '<%= editSkinCombo.ClientID %>',
             containerSelector: '<%= editContainerCombo.ClientID %>',
             baseUrl: '//<%= this.PortalAlias.HTTPAlias %>',
-            noSelectionMessage: '<%= DotNetNuke.UI.Utilities.ClientAPI.GetSafeJSString(LocalizeString("PreviewNoSelectionMessage.Text")) %>',
+            noSelectionMessage: '<%= LocalizeSafeJsString("PreviewNoSelectionMessage.Text") %>',
             alertCloseText: '<%= Localization.GetSafeJSString("Close.Text", Localization.SharedResourceFile)%>',
             alertOkText: '<%= Localization.GetSafeJSString("Ok.Text", Localization.SharedResourceFile)%>',
             useComboBox: true
@@ -780,21 +801,21 @@
         var titleText = '<%= Localization.GetSafeJSString("Confirm.Text", Localization.SharedResourceFile) %>';
 
         $('.dnnDeleteSite').dnnConfirm({
-            text: '<%= DotNetNuke.UI.Utilities.ClientAPI.GetSafeJSString(LocalizeString("DeleteMessage")) %>',
+            text: '<%= LocalizeSafeJsString("DeleteMessage") %>',
             yesText: yesText,
             noText: noText,
             title: titleText
         });
 
         $('#<%= cmdRestore.ClientID %>').dnnConfirm({
-            text: '<%= DotNetNuke.UI.Utilities.ClientAPI.GetSafeJSString(LocalizeString("RestoreCCSMessage")) %>',
+            text: '<%= LocalizeSafeJsString("RestoreCCSMessage") %>',
             yesText: yesText,
             noText: noText,
             title: titleText
         });
 
         $('#<%= IncrementCrmVersionButton.ClientID %>').dnnConfirm({
-            text: '<%= DotNetNuke.UI.Utilities.ClientAPI.GetSafeJSString(LocalizeString("IncrementCrmVersionConfirm")) %>',
+            text: '<%= LocalizeSafeJsString("IncrementCrmVersionConfirm") %>',
             yesText: yesText,
             noText: noText,
             title: titleText
